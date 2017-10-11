@@ -49,16 +49,16 @@ void PCircuit::addEnc(Keys& k, int index, string bZero, string bOne, bool displa
 	b1.emplace_back(std::bind(helperP, k, placeholders::_1, index, 1, bOne, placeholders::_2, display));
 }
 
-void PCircuit::getCipher(int i, int b, string hStr, ChameleonCipherText& ct)
+void PCircuit::getCipher(int i, int b, vector<string> hVec, ChameleonCipherText& ct)
 {
 	if (i >= _size) {
 		cout << "Attempting to access functor in PCircuit with invalid index " << i << endl;
 		return;
 	}
 	if (b == 0 || b == '0')
-		b0[i](hStr, ct);
+		b0[i](hVec, ct);
 	else if (b == 1 || b == '1')
-		b1[i](hStr, ct);
+		b1[i](hVec, ct);
 	else {
 		cout << "Attempting to access functor in PCircuit with invalid b " << b << endl;
 		return;
@@ -85,14 +85,16 @@ Label::Label()
 	_size = 0;
 }
 
-Label::Label(int n)
+Label::Label(int n, bool triv)
 {
 	_size = n;
 	b0.reserve(n);
 	b1.reserve(n);
-	for (int i = 0; i < n; i++) {
-		b0.push_back("0");
-		b1.push_back("1");
+	if (triv) {
+		for (int i = 0; i < n; i++) {
+			b0.push_back("0");
+			b1.push_back("1");
+		}
 	}
 }
 
@@ -226,7 +228,7 @@ void P(int beta, Keys& k, Label lab, PCircuit& pc, int n, bool display)
 	}
 }
 
-void helperP(Keys& k, string hStr, int index, int b, string message, ChameleonCipherText& ct, bool display) {
+void helperP(Keys& k, vector<string> hVec, int index, int b, string message, ChameleonCipherText& ct, bool display) {
 	//used in P to be converted to functor object
 	//returns a vector of ChameleonCipherTexts size 1024
 	/*
@@ -237,6 +239,10 @@ void helperP(Keys& k, string hStr, int index, int b, string message, ChameleonCi
 
 			return toReturn
 		*/
+	string hStr = "";
+	for (int i = 0; i < hVec.size(); i++) {
+		hStr += hVec[i];
+	}
 
 	if (hStr.length() != 512) {
 		cout << "ERROR: hStr passed into P() does not have a length of 512\n";
@@ -295,6 +301,21 @@ pair<ECC_point, SecByteBlock> helperT(string message, vector<string>& ekVec) {
 	ECC_point ek(ekx, eky);
 	
 	return E(ek, message);
+}
+
+pair<ECC_point, SecByteBlock> Eval(function<pair<ECC_point, SecByteBlock>(vector<string>)> garbled, vector<string> input)
+{
+	return garbled(input);
+}
+
+Label GCircuit(function<pair<ECC_point, SecByteBlock>(vector<string>)>& toGarble, int security)
+{
+	return Label(security);
+}
+
+Label GCircuit(PCircuit& toGarble, int security)
+{
+	return Label(security);
 }
 
 string PRF(string s, string v)
@@ -396,6 +417,9 @@ void testP(Keys& k, bool display, int loops) {
 		if (display) cout << "h: " << h << endl;
 
 		string hStr = integer_to_bin(h.getX(), 256) + integer_to_bin(h.getY(), 256);
+		vector<string> hVec(hStr.length());
+		for (int i = 0; i < hStr.length(); i++)
+			hVec.push_back(strBit(hStr[i]));
 
 		if (display) cout << "Calling P() to obtain PCircuit, contains vectors of functors\n";
 		P(beta, k, lab, pTilda, n, display);
@@ -405,8 +429,8 @@ void testP(Keys& k, bool display, int loops) {
 			if (display) cout << "Evaluating functors in PCircuit to obtain ChameleonCipherTexts\n";
 			encrypted0 = ChameleonCipherText();
 			encrypted1 = ChameleonCipherText();
-			pTilda.getCipher(i, 0, lab.getLabel(i,hStr[i]), encrypted0);
-			pTilda.getCipher(i, 1, lab.getLabel(i,hStr[i]), encrypted1);
+			pTilda.getCipher(i, 0, hVec, encrypted0);
+			pTilda.getCipher(i, 1, hVec, encrypted1);
 
 			if (display) cout << "Decrypting the ChameleonCipherTexts\n";
 			decrypted0 = Dec(k, x, r, encrypted0, display);
@@ -484,3 +508,4 @@ void testT(int n, string message, bool display) {
 		if (display) cout << "End testing to T()\n";
 	}
 }
+

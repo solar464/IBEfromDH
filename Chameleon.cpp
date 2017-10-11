@@ -445,6 +445,15 @@ Integer bin_to_integer(string a) {
 	return result;
 }
 
+string strBit(int n)
+{
+	if (n == 0 || n == '0')
+		return "0";
+	else if (n == 1 || n == '1')
+		return "1";
+	return "ERROR";
+}
+
 void testHash(Keys& k, Traps& t, int n, bool display)
 {
 	int klen = k.size();

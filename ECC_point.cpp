@@ -99,6 +99,16 @@ ECC_point::ECC_point(const ECC_point& a) {
 	x = a.getX(); y = a.getY(); z = a.getZ();
 }
 
+ECC_point::ECC_point(string X, string Y, string Z)
+{
+	if (Z == "")
+		z = 1;
+	else
+		z = Integer(Z.c_str());
+	x = Integer(X.c_str());
+	y = Integer(Y.c_str());
+}
+
 ECC_point ECC_point::add_points(const ECC_point& a, const ECC_point& b) {
 	ECC_point c = a.deepCopy();
 	c.add_points(b);

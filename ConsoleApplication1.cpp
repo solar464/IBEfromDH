@@ -82,7 +82,9 @@ int main() {
 	extern const Integer d;
 	extern const Integer m;
 	extern AutoSeededRandomPool rng;
-
+	vector<ECC_point> a = { ECC_point(0,0,1),g,g,g };
+	for (ECC_point i : a)
+		cout << i << endl;
 	/*
 	Label la(5, "00000", "11111");
 	string b0 = la.B0();
@@ -129,10 +131,12 @@ int main() {
 	string decrypted = Dec(k, x, r, ct, true);
 	cout << "decrypted: " << decrypted << endl;
 	*/
+	/*
 	Keys k;
 	Traps t;
 	Gen(4,k,t);
 	testP(k, true);
+	*/
 	
 	//cout << "testing GED\n";
 	//testGED(10, "hi", true);
@@ -194,7 +198,7 @@ int main() {
 	cout << "Generating Keys and Trapdoors\n";
 	Keys k;
 	Traps t;
-	Gen(4, k, t, true);
+	Gen(8, k, t, true);
 
 	cout << "Testing Hash, HashInv\n";
 	testHash(k, t, 10);

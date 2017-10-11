@@ -17,6 +17,7 @@ public:
 	ECC_point(const Integer&, const Integer&);
 	ECC_point(const ECC_point*);
 	ECC_point(const ECC_point&);
+	ECC_point(string, string, string = "");
 	//static functions return a new object
 	//instance methods are mutator functions when implemented
 	//template functions must be implemented in the header file

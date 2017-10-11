@@ -5,9 +5,9 @@
 #include <eccrypto.h>
 #include <osrng.h>
 
-extern const Integer m;
-extern const Integer l;
-extern const Integer d;
+//extern const Integer m;
+//extern const Integer l;
+//extern const Integer d;
 extern AutoSeededRandomPool rng;
 const int lmbd = 256;
 
@@ -34,7 +34,7 @@ void Setup(int n,
 	if (msk.mpk() != &mpk) {
 		msk.set_mpk(&mpk);
 	}
-
+	
 	Keys k;
 	Traps t;
 	//# Ed25519 points require 512 bits to represent without extra computation
@@ -46,7 +46,7 @@ void Setup(int n,
 		mpk.addKeys(&k);
 		msk.addTraps(&t);
 	}
-
+	
 	//# 3.
 	//NodeGen(MSK*, string, string, LocalKey*);
 	LocalKey tmp(1);
@@ -129,7 +129,7 @@ void Encrypt(MPK& mpk, string id, string message,
 	//# (T~, lab) = GCircuit(lmbd, T[m]), a garbled circuit in actual implementation
 	//# m in brackets because known input, ek will be the final result of Ptilda
 	function<pair<ECC_point, SecByteBlock>(vector<string>)> Ttilda = T(message);
-	Label lab = GCircuit<pair<ECC_point, SecByteBlock>>(Ttilda, 2*lmbd);
+	Label lab = GCircuit(Ttilda, 2*lmbd);
 	//#Ttilda = T(m) #garbled circuits not yet implemented
 
 	//#2.
@@ -153,6 +153,7 @@ void Encrypt(MPK& mpk, string id, string message,
 	ct.setTtilda(&Ttilda);
 	ct.setLab(lab_h_ep);
 }
+
 string Decrypt(IBECipherText& ct, Sk_id& sk_id, MPK& mpk, bool display) {
 	//# ct: ciphertext from Encrypt()
 	//# sk_id : decryption key from KeyGen()
@@ -162,7 +163,7 @@ string Decrypt(IBECipherText& ct, Sk_id& sk_id, MPK& mpk, bool display) {
 	//# *evaluates garbled circuits
 
 	//# 1.
-	vector<string> lab = ct.lab();
+	vector<string> *lab = &ct.lab();
 	//Ptilda_i = ct.PTilda(i);
 	function<pair<ECC_point, SecByteBlock>(vector<string>)>* Ttilda = ct.Ttilda();
 	string id = sk_id.id();
@@ -191,6 +192,8 @@ string Decrypt(IBECipherText& ct, Sk_id& sk_id, MPK& mpk, bool display) {
 	string encryption_key;
 	//# 5. Following code requires garbled circuits.
 
+	vector<string> *tmp;
+	vector<string> *newLab = &vector<string>(2 * lmbd);
 	//#recovery of ek from Ptilda
 	for (int i = 0; i < n; i++) {
 		//# in paper : v = ID[0:i]
@@ -209,27 +212,31 @@ string Decrypt(IBECipherText& ct, Sk_id& sk_id, MPK& mpk, bool display) {
 
 			for (int j = 0; j < 2 * lmbd; j++) {
 				ChameleonCipherText chamCT;
-				e.getCipher(j, y[j], lab[j], chamCT);
-				lab[j] = Dec(*(mpk.getKeys(i)), ekv0 + ekv1, lk->rv(i), chamCT);
+				e.getCipher(j, y[j], *lab, chamCT);
+				(*newLab)[j] = Dec(*(mpk.getKeys(i)), ekv0 + ekv1, lk->rv(i), chamCT);
 			}
 					
 		}
 		//# c)
 		else {
 			y = integer_to_bin(Extract(lk->hv(i)), lmbd) + integer_to_bin(Extract(lk->hv(i)), lmbd);
-				for (int j = 0; j < 2 * lmbd; j++) {
-					string hv0andhv1 = integer_to_bin(Extract(lk->hv0(i)), lmbd) + integer_to_bin(lk->hv0(i).getY(), lmbd) + integer_to_bin(Extract(lk->hv1(i)), lmbd) + integer_to_bin(lk->hv1(i).getY(), lmbd);
-					ChameleonCipherText chamCT;
-					e.getCipher(j, y[j], lab[j], chamCT);
-					lab[j] = Dec(*(mpk.getKeys(i)), hv0andhv1, lk->rv(i), chamCT);
-				}
+			for (int j = 0; j < 2 * lmbd; j++) {
+				string hv0andhv1 = integer_to_bin(Extract(lk->hv0(i)), lmbd) + integer_to_bin(lk->hv0(i).getY(), lmbd) + integer_to_bin(Extract(lk->hv1(i)), lmbd) + integer_to_bin(lk->hv1(i).getY(), lmbd);
+				ChameleonCipherText chamCT;
+				e.getCipher(j, y[j], lab[j], chamCT);
+				(*newLab)[j] = Dec(*(mpk.getKeys(i)), hv0andhv1, lk->rv(i), chamCT);
+			}
+			tmp = lab;
+			lab = newLab;
+			newLab = tmp;
+			newLab->clear();
 		}
 		
 	}
 	//# 6.
 	//# Evaluation of T[m](ek)
 	//f = Eval(Ttilda, lab) #if using garbled circuits
-	pair<ECC_point, SecByteBlock> f = Eval<pair<ECC_point, SecByteBlock>>(*(ct.Ttilda()), lab);
+	pair<ECC_point, SecByteBlock> f = Eval(*(ct.Ttilda()), *newLab);
 
 	//#7.
 

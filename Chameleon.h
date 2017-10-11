@@ -20,7 +20,7 @@ class Keys
 
 class Traps
 {
-	std::vector<pair<const Integer,const Integer>> _t;
+	std::vector<pair<Integer,Integer>> _t;
 	int _size;
 	public:
 		Traps();
@@ -113,6 +113,7 @@ Integer Extract(const ECC_point& a);
 // TESTING FUNCTIONS
 string integer_to_bin(Integer,int);
 Integer bin_to_integer(string a);
+string strBit(int n);
 
 //test the chameleon encryption functions
 void testHash(Keys&, Traps&, int, bool = false);
